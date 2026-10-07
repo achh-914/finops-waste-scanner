@@ -29,6 +29,14 @@ jobs:
         # stop the build if there are Python syntax errors or undefined names
         flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
 
+    - name: Run Python Unit Tests
+      run: |
+        python -m unittest discover -s tests
+
+    - name: Create Mock Lambda Zip for Terraform Validation
+      run: |
+        zip -j lambda_function.zip src/* || touch lambda_function.zip
+
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v2
       with:
@@ -39,4 +47,3 @@ jobs:
         terraform fmt -check
         terraform init -backend=false
         terraform validate
-
