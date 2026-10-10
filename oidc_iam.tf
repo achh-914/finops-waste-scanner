@@ -9,12 +9,11 @@ resource "aws_iam_openid_connect_provider" "github" {
 data "aws_iam_policy_document" "github_actions_assume_role" {
   statement {
     actions = ["sts:AssumeRoleWithWebIdentity"]
-    type    = "Federated"
 
     principals {
+      type        = "Federated"
       identifiers = [aws_iam_openid_connect_provider.github.arn]
     }
-
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:aud"
