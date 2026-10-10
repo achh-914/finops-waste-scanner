@@ -14,7 +14,14 @@ import (
 type WasteReport struct {
 	UnattachedVolumes []string
 	UnassociatedIPs   []string
+	EstimatedMonthlyWaste float64
 }
+
+// Pricing constants (Average AWS Costs per month)
+const (
+	EBSCostPerGBPerMonth = 0.08 // $0.08 per GB for standard gp2/gp3 EBS
+	EIPCostPerMonth      = 3.60 // ~$0.005/hr for unassociated Elastic IP
+)
 
 // ScanRuntimeWaste checks live AWS resources for unattached EBS volumes and unassociated Elastic IPs.
 func ScanRuntimeWaste(ctx context.Context, region string) (*WasteReport, error) {
@@ -44,7 +51,9 @@ func ScanRuntimeWaste(ctx context.Context, region string) (*WasteReport, error) 
 	for _, vol := range volOutput.Volumes {
 		id := aws.ToString(vol.VolumeId)
 		size := aws.ToInt32(vol.Size)
-		log.Printf("[WASTE DETECTED] Unattached EBS Volume: ID=%s, Size=%d GB\n", id, size)
+		cost := float64(size) * EBSCostPerGBPerMonth
+		report.EstimatedMonthlyWaste += cost
+		log.Printf("[WASTE DETECTED] Unattached EBS Volume: ID=%s, Size=%d GB, Waste=~$%.2f/mo\n", id, size, cost)
 		report.UnattachedVolumes = append(report.UnattachedVolumes, id)
 	}
 
@@ -58,7 +67,8 @@ func ScanRuntimeWaste(ctx context.Context, region string) (*WasteReport, error) 
 	for _, addr := range eipOutput.Addresses {
 		if addr.AssociationId == nil {
 			ip := aws.ToString(addr.PublicIp)
-			log.Printf("[WASTE DETECTED] Unassociated Elastic IP: IP=%s\n", ip)
+			report.EstimatedMonthlyWaste += EIPCostPerMonth
+			log.Printf("[WASTE DETECTED] Unassociated Elastic IP: IP=%s, Waste=~$%.2f/mo\n", ip, EIPCostPerMonth)
 			report.UnassociatedIPs = append(report.UnassociatedIPs, ip)
 		}
 	}
